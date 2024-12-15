@@ -1,0 +1,1 @@
+datamodel-codegen --url https://cardanosolutions.github.io/kupo/api/nightly.yaml --input-file-type=openapi --output-model-type=pydantic_v2.BaseModel --output src/kupo/models.py --encoding utf-16 --collapse-root-models --reuse-model --target-python-version 3.12 --use-schema-description --use-double-quotes --wrap-string-literal

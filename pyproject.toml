@@ -1,0 +1,40 @@
+[project]
+name = "kupo-py"
+version = "0.0.0"
+description = "A Cardano Kupo client for Python."
+readme = "README.md"
+authors = [
+    { name = "Elder Millenial", email = "eldermillenial@protonmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp[speedups]>=3.11.10",
+    "bump2version>=1.0.1",
+    "pycardano>=0.11.1",
+    "pydantic>=2.10.3",
+    "python-dotenv==0.21.1",
+    "requests>=2.32.3",
+    "setuptools>=75.6.0",
+]
+
+[dependency-groups]
+dev = [
+    "black>=24.10.0",
+    "bump2version>=1.0.1",
+    "datamodel-code-generator[http]>=0.26.3",
+    "mypy>=1.13.0",
+    "nox>=2024.10.9",
+    "pre-commit>=4.0.1",
+    "pytest-benchmark>=5.1.0",
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.0",
+    "ruff>=0.8.3",
+    "charli3-dendrite>=1.1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kupo"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
