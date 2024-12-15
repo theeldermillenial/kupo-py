@@ -5,9 +5,15 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Dict
+from typing import List
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, conint, constr
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Field
+from pydantic import RootModel
+from pydantic import conint
+from pydantic import constr
 
 
 class AddressShelley(RootModel[str]):
@@ -52,7 +58,7 @@ class BadRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    hint: Optional[str] = Field(None, description="Some hint about what went wrong.")
+    hint: str | None = Field(None, description="Some hint about what went wrong.")
 
 
 class Datum(BaseModel):
@@ -60,13 +66,14 @@ class Datum(BaseModel):
         extra="forbid",
     )
     datum: str = Field(
-        ..., description="A serialized Plutus' datum.", examples=["d87980"]
+        ...,
+        description="A serialized Plutus' datum.",
+        examples=["d87980"],
     )
 
 
 class DatumType(Enum):
-    """
-    Categorize the type of datum in the output:
+    """Categorize the type of datum in the output:
 
     - `hash`: means that the output only contains a reference to the datum;
     - `inline`: means that the ouput originally contained a full inline datum.
@@ -85,13 +92,13 @@ class DatumType(Enum):
 
 class Deleted(BaseModel):
     deleted: conint(ge=0) = Field(
-        ..., description="Number of entities effectively deleted."
+        ...,
+        description="Number of entities effectively deleted.",
     )
 
 
 class Limit(Enum):
-    """
-    Specify the server behavior when rolling back out of the _safe
+    """Specify the server behavior when rolling back out of the _safe
     zone_. As mentioned in the user manual, when running Kupo with
     `--prune-utxo` enabled, the server gets rid of spent UTxOs, but it
     only does so after a certain time. That time is exactly `129600`
@@ -163,9 +170,7 @@ class MetadatumBytes(BaseModel):
 
 
 class Language(Enum):
-    """
-    The type of script. `native` refers to pre-Alonzo scripts made of the native DSL to combine keys.
-    """
+    """The type of script. `native` refers to pre-Alonzo scripts made of the native DSL to combine keys."""
 
     native = "native"
     plutus_v1 = "plutus:v1"
@@ -191,22 +196,20 @@ class Script(BaseModel):
 
 
 class Value(BaseModel):
-    """
-    A (multi-asset) value of a transaction's output.
-    """
+    """A (multi-asset) value of a transaction's output."""
 
     model_config = ConfigDict(
         extra="forbid",
     )
     coins: int = Field(..., description="A quantity of Lovelace.", examples=[42])
-    assets: Optional[Dict[str, int]] = Field(
+    assets: Dict[str, int] | None = Field(
         None,
         description="A _key:value_ map of asset identifier → quantity.",
         examples=[
             {
                 "1220099e5e430475c219518179efc7e6c8289db028904834025d5b086": 231,
                 "289db028904834025d5b085d5b08661220099e5e430475c2195181796.08661220099e": 1,
-            }
+            },
         ],
     )
 
@@ -216,15 +219,15 @@ class Wildcard(Enum):
 
 
 class CreatedAt(BaseModel):
-    """
-    Block reference at which this transaction was included in the ledger.
-    """
+    """Block reference at which this transaction was included in the ledger."""
 
     model_config = ConfigDict(
         extra="forbid",
     )
     slot_no: conint(ge=0) = Field(
-        ..., description="An absolut slot number.", examples=[51540727]
+        ...,
+        description="An absolut slot number.",
+        examples=[51540727],
     )
     header_hash: constr(min_length=64, max_length=64) = Field(
         ...,
@@ -234,51 +237,46 @@ class CreatedAt(BaseModel):
 
 
 class ConnectionStatus(Enum):
-    """
-    Condition of the connection with the underlying node.
-    """
+    """Condition of the connection with the underlying node."""
 
     connected = "connected"
     disconnected = "disconnected"
 
 
 class Indexes(Enum):
-    """
-    Behaviour surrounding the database query indexes.
-    """
+    """Behaviour surrounding the database query indexes."""
 
     deferred = "deferred"
     installed = "installed"
 
 
 class Configuration(BaseModel):
-    """
-    A summary of hand-picked configuration parameters.
-    """
+    """A summary of hand-picked configuration parameters."""
 
     model_config = ConfigDict(
         extra="forbid",
     )
     indexes: Indexes = Field(
-        ..., description="Behaviour surrounding the database query indexes."
+        ...,
+        description="Behaviour surrounding the database query indexes.",
     )
 
 
 class Health(BaseModel):
-    """
-    An overview of the server & connection status. Note that, when `most_recent_checkpoint` and `most_recent_node_tip` are equal, the index is fully synchronized.
-    """
+    """An overview of the server & connection status. Note that, when `most_recent_checkpoint` and `most_recent_node_tip` are equal, the index is fully synchronized."""
 
     model_config = ConfigDict(
         extra="forbid",
     )
     connection_status: ConnectionStatus = Field(
-        ..., description="Condition of the connection with the underlying node."
+        ...,
+        description="Condition of the connection with the underlying node.",
     )
-    most_recent_checkpoint: Optional[conint(ge=0)] = None
-    most_recent_node_tip: Optional[conint(ge=0)] = None
+    most_recent_checkpoint: conint(ge=0) | None = None
+    most_recent_node_tip: conint(ge=0) | None = None
     configuration: Configuration = Field(
-        ..., description="A summary of hand-picked configuration parameters."
+        ...,
+        description="A summary of hand-picked configuration parameters.",
     )
     version: str = Field(..., description="Current software version.")
 
@@ -302,15 +300,14 @@ class HealthPrometheus(RootModel[str]):
                     " kupo_most_recent_node_tip counter\nkupo_most_recent_node_tip "
                     " 71753381\n\n# TYPE kupo_configuration_indexes"
                     " gauge\nkupo_configuration_indexes  1.0\n"
-                )
-            }
+                ),
+            },
         },
     )
 
 
 class RollbackTo(BaseModel):
-    """
-    A mandatory point to rollback the synchronization to.
+    """A mandatory point to rollback the synchronization to.
     Note that the synchronization will therefore begin starting from the point **immediately after** the provided point!
 
     > <sup><strong>NOTE (1)</strong></sup> <br/>
@@ -323,9 +320,11 @@ class RollbackTo(BaseModel):
     """
 
     slot_no: conint(ge=0) = Field(
-        ..., description="An absolut slot number.", examples=[51540727]
+        ...,
+        description="An absolut slot number.",
+        examples=[51540727],
     )
-    header_hash: Optional[constr(min_length=64, max_length=64)] = Field(
+    header_hash: constr(min_length=64, max_length=64) | None = Field(
         None,
         description="A blake2b-256 hash digest of a block header.",
         examples=["9d09...31bf"],
@@ -352,7 +351,7 @@ class ForcedRollback(BaseModel):
             " ancestor if no point is found at the given slot.\n"
         ),
     )
-    limit: Optional[Limit] = Field(
+    limit: Limit | None = Field(
         "within_safe_zone",
         description=(
             "Specify the server behavior when rolling back out of the _safe\nzone_. As"
@@ -386,7 +385,7 @@ class Pattern(
             constr(pattern=r"[0-9a-f]{56}\.(.*|[0-9a-f]{2,64})"),
             constr(pattern=r"(.*|[0-9]+)@[0-9a-f]{64}"),
         ]
-    ]
+    ],
 ):
     root: Union[
         Wildcard,
@@ -407,7 +406,9 @@ class Point(BaseModel):
         extra="forbid",
     )
     slot_no: conint(ge=0) = Field(
-        ..., description="An absolut slot number.", examples=[51540727]
+        ...,
+        description="An absolut slot number.",
+        examples=[51540727],
     )
     header_hash: constr(min_length=64, max_length=64) = Field(
         ...,
@@ -437,11 +438,12 @@ class Match(BaseModel):
     )
     address: str = Field(..., description="A Cardano address, in any era.")
     value: Value
-    datum_hash: Optional[constr(min_length=64, max_length=64)] = Field(
-        ..., description="A blake2b-256 hash digest of a Plutus' datum, if any."
+    datum_hash: constr(min_length=64, max_length=64) | None = Field(
+        ...,
+        description="A blake2b-256 hash digest of a Plutus' datum, if any.",
     )
-    datum_type: Optional[DatumType] = None
-    script_hash: Optional[constr(min_length=56, max_length=56)] = Field(
+    datum_type: DatumType | None = None
+    script_hash: constr(min_length=56, max_length=56) | None = Field(
         ...,
         description="A blake2b-224 hash digest of a Native or Plutus script, if any.",
     )
@@ -452,7 +454,7 @@ class Match(BaseModel):
         ),
         title="Point",
     )
-    spent_at: Optional[Point] = Field(
+    spent_at: Point | None = Field(
         ...,
         description=(
             "Block reference at which this transaction input was spent, if any."
@@ -479,7 +481,11 @@ class Metadata(BaseModel):
     schema_: Dict[
         str,
         Union[
-            MetadatumInt, MetadatumString, MetadatumBytes, MetadatumList, MetadatumMap
+            MetadatumInt,
+            MetadatumString,
+            MetadatumBytes,
+            MetadatumList,
+            MetadatumMap,
         ],
     ] = Field(
         ...,
@@ -505,7 +511,12 @@ class Metadata(BaseModel):
                         {
                             "k": {"string": "numbers"},
                             "v": {
-                                "list": [{"int": 1}, {"int": 2}, {"int": 4}, {"int": 8}]
+                                "list": [
+                                    {"int": 1},
+                                    {"int": 2},
+                                    {"int": 4},
+                                    {"int": 8},
+                                ],
                             },
                         },
                         {
@@ -515,13 +526,13 @@ class Metadata(BaseModel):
                                     {"k": {"string": "A"}, "v": {"int": 65}},
                                     {"k": {"string": "B"}, "v": {"int": 66}},
                                     {"k": {"string": "C"}, "v": {"int": 67}},
-                                ]
+                                ],
                             },
                         },
-                    ]
+                    ],
                 },
                 "-8": {"bytes": "48656c6c6f2c2043617264616e6f21"},
-            }
+            },
         ],
     )
 
@@ -532,7 +543,11 @@ class MetadatumList(BaseModel):
     )
     list: List[
         Union[
-            MetadatumInt, MetadatumString, MetadatumBytes, MetadatumList, MetadatumMap
+            MetadatumInt,
+            MetadatumString,
+            MetadatumBytes,
+            MetadatumList,
+            MetadatumMap,
         ]
     ] = Field(
         ...,

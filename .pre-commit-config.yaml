@@ -35,7 +35,7 @@ repos:
     rev: "v0.8.3"
     hooks:
       - id: ruff
-        args: [--fix, --exclude=example]
+        args: [--fix, --exclude=src/kupo/models.py]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: "v1.13.0"
@@ -44,7 +44,8 @@ repos:
         exclude: |
           (?x)(
             tests|
-            examples
+            examples|
+            src/kupo/models.py
           )
         args: ["--follow-imports=skip"]
         disable_error_codes: ["attr-defined"]

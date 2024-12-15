@@ -1,18 +1,22 @@
+"""The Kupo Python client."""
+
 import os
-import time
+from collections.abc import Callable
+from collections.abc import Iterator
 from enum import Enum
 from functools import partial
 from functools import wraps
-from typing import Any, Callable, Self
+from typing import Any
+from typing import Self
 
-import aiohttp as aio
+import aiohttp as aio  # type: ignore
 import requests
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # type: ignore
 from pydantic import BaseModel
 from pydantic import Field
+from pydantic import RootModel
 from pydantic import field_validator
 from pydantic import model_validator
-from pydantic import RootModel
 
 from kupo.models import Datum
 from kupo.models import Match
@@ -27,30 +31,39 @@ KUPO_PORT = os.environ.get("KUPO_PORT", None)
 
 
 class Order(Enum):
+    """Order of results by time."""
+
     DESC = "most_recent_first"
     ASC = "least_recent_first"
 
 
 class QueryBase(BaseModel):
+    """Query paramete base model, includes utility functions."""
 
     def params(self) -> dict[str, Any]:
-
+        """Paramters for the query."""
         return self.model_dump(mode="json", exclude_none=True)
 
 
 class BaseArray(RootModel):
+    """Base class for array responses."""
 
     def __getitem__(self, index: int) -> Match:
+        """Get an item from the list."""
         return self.root[index]
 
     def __len__(self) -> int:
+        """Get the length of the list."""
         return len(self.root)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Match]:
+        """Iterate over the list."""
         return self.root
 
 
 class MatchQuery(QueryBase):
+    """Validator for the match query parameters."""
+
     spent: bool = Field(False, exclude=True)
     unspent: bool = Field(False, exclude=True)
     order: Order = Order.DESC
@@ -64,6 +77,7 @@ class MatchQuery(QueryBase):
     output_index: int | None = None
 
     def flags(self) -> list[str]:
+        """Get flags, which are empty parameters in the query string."""
         flags = []
         if self.spent:
             flags.append("spent")
@@ -73,26 +87,30 @@ class MatchQuery(QueryBase):
         return flags
 
     @field_validator(
-        "spent_after", "spent_before", "created_after", "created_before", mode="before"
+        "spent_after",
+        "spent_before",
+        "created_after",
+        "created_before",
+        mode="before",
     )
-    def validate_int(cls, v: Any) -> int | None:
-
+    def validate_int(self, v: float | str) -> int | None:
+        """Convert timestamps to integers."""
         return None if v is None else int(v)
 
     @model_validator(mode="after")
     def validate_params(self) -> Self:
-
+        """Run validation on match parameters to comply with API requirements."""
         if self.spent and self.unspent:
             raise ValueError("Cannot have both spent and unspent in parameters")
 
         if self.spent_after is not None and self.created_after is not None:
             raise ValueError(
-                "Cannot have both spent_after and created_after in parameters"
+                "Cannot have both spent_after and created_after in parameters",
             )
 
         if self.spent_before is not None and self.created_before is not None:
             raise ValueError(
-                "Cannot have both spent_before and created_before in parameters"
+                "Cannot have both spent_before and created_before in parameters",
             )
 
         if (
@@ -120,17 +138,21 @@ class MatchQuery(QueryBase):
             and self.spent_before is not None
         ):
             raise ValueError(
-                "spent is redundant when spent_after and spent_before are set"
+                "spent is redundant when spent_after and spent_before are set",
             )
 
         return self
 
 
 class MatchResponse(BaseArray):
+    """The response model for endpoints that return matches."""
+
     root: list[Match]
 
 
 class PatternResponse(BaseArray):
+    """The response model for endpoints that return patterns."""
+
     root: list[Pattern]
 
 
@@ -149,28 +171,28 @@ def rest_wrapper(
     if is_async:
 
         @wraps(func)
-        async def wrapped(*args, **kwargs):
+        async def async_wrapped(*args, **kwargs):  # noqa
             if "model" not in kwargs or kwargs["model"] is None:
                 parsed = param_model.model_validate(kwargs)
                 kwargs["model"] = parsed
             return await func(*args, **kwargs)
 
-        return wrapped
+        return async_wrapped
 
-    else:
+    @wraps(func)
+    def wrapped(*args, **kwargs):  # noqa
+        if "model" not in kwargs or kwargs["model"] is None:
+            parsed = param_model.model_validate(kwargs)
+            kwargs["model"] = parsed
+        return func(*args, **kwargs)
 
-        @wraps(func)
-        def wrapped(*args, **kwargs):
-            if "model" not in kwargs or kwargs["model"] is None:
-                parsed = param_model.model_validate(kwargs)
-                kwargs["model"] = parsed
-            return func(*args, **kwargs)
-
-        return wrapped
+    return wrapped
 
 
 class KupoClient:
-    def __init__(self, base_url: str | None = None, port: int | None = None):
+    """A Python client for the Kupo REST API."""
+
+    def __init__(self, base_url: str | None = None, port: int | None = None) -> None:
         """The Python Kupo API client.
 
         Args:
@@ -178,7 +200,6 @@ class KupoClient:
                 Defaults to None.
             port: If not supplied, tries to read from the environment. Defaults to None.
         """
-
         if base_url is None:
             base_url = KUPO_BASE_URL
 
@@ -196,6 +217,7 @@ class KupoClient:
 
     @property
     def base_url(self) -> str:
+        """The base URL for the client."""
         return f"{self._base_url}:{self._port}"
 
     async def _get_async(
@@ -210,7 +232,9 @@ class KupoClient:
             path += "?" + "&".join(flags)
         async with aio.ClientSession() as session:
             async with session.get(
-                path, params=params, timeout=aio.ClientTimeout(total=timeout)
+                path,
+                params=params,
+                timeout=aio.ClientTimeout(total=timeout),
             ) as response:
                 response.raise_for_status()
                 return await response.json()
@@ -267,12 +291,14 @@ class KupoClient:
         Returns:
             _description_
         """
-
         if model is None:
             raise ValueError("model must be None")
 
         response = self._get(
-            "/matches", params=model.params(), flags=model.flags(), timeout=timeout
+            "/matches",
+            params=model.params(),
+            flags=model.flags(),
+            timeout=timeout,
         )
 
         return MatchResponse.model_validate(response)
@@ -314,12 +340,14 @@ class KupoClient:
         Returns:
             _description_
         """
-
         if model is None:
             raise ValueError("model must be None")
 
         response = await self._get_async(
-            "/matches", params=model.params(), flags=model.flags(), timeout=timeout
+            "/matches",
+            params=model.params(),
+            flags=model.flags(),
+            timeout=timeout,
         )
 
         return MatchResponse.model_validate(response)
@@ -363,7 +391,6 @@ class KupoClient:
         Returns:
             The MatchResponse model.
         """
-
         if model is None:
             raise ValueError("model must be None")
 
@@ -415,7 +442,6 @@ class KupoClient:
         Returns:
             The MatchResponse model.
         """
-
         if model is None:
             raise ValueError("model must be None")
 
@@ -437,8 +463,7 @@ class KupoClient:
         Returns:
             The list of matching patterns.
         """
-
-        results = self._get(f"/patterns", timeout=timeout)
+        results = self._get("/patterns", timeout=timeout)
 
         return PatternResponse.model_validate(results)
 
@@ -451,8 +476,7 @@ class KupoClient:
         Returns:
             The list of matching patterns.
         """
-
-        results = await self._get_async(f"/patterns", timeout=timeout)
+        results = await self._get_async("/patterns", timeout=timeout)
 
         return PatternResponse.model_validate(results)
 
@@ -466,13 +490,14 @@ class KupoClient:
         Returns:
             The list of matching patterns.
         """
-
         results = self._get(f"/patterns/{pattern}", timeout=timeout)
 
         return PatternResponse.model_validate(results)
 
     async def get_pattern_async(
-        self, pattern: str, timeout: int = 300
+        self,
+        pattern: str,
+        timeout: int = 300,
     ) -> PatternResponse:
         """Get all patterns that match a given pattern (if possible).
 
@@ -483,7 +508,6 @@ class KupoClient:
         Returns:
             The list of matching patterns.
         """
-
         results = await self._get_async(f"/patterns/{pattern}", timeout=timeout)
 
         return PatternResponse.model_validate(results)
@@ -498,13 +522,14 @@ class KupoClient:
         Returns:
             The script matching the hash.
         """
-
         results = self._get(f"/scripts/{script_hash}", timeout=timeout)
 
         return Script.model_validate(results)
 
     async def get_script_by_hash_async(
-        self, script_hash: str, timeout: int = 300
+        self,
+        script_hash: str,
+        timeout: int = 300,
     ) -> Script:
         """Get a script by its hash.
 
@@ -515,7 +540,6 @@ class KupoClient:
         Returns:
             The script matching the hash.
         """
-
         results = await self._get_async(f"/scripts/{script_hash}", timeout=timeout)
 
         return Script.model_validate(results)
@@ -530,13 +554,14 @@ class KupoClient:
         Returns:
             The datum matching the hash.
         """
-
         results = self._get(f"/datums/{datum_hash}", timeout=timeout)
 
         return Datum.model_validate(results)
 
     async def get_datum_by_hash_async(
-        self, datum_hash: str, timeout: int = 300
+        self,
+        datum_hash: str,
+        timeout: int = 300,
     ) -> Datum:
         """Get a datum by its hash.
 
@@ -547,27 +572,9 @@ class KupoClient:
         Returns:
             The datum matching the hash.
         """
-
         results = await self._get_async(f"/datums/{datum_hash}", timeout=timeout)
 
         return Datum.model_validate(results)
-
-    async def get_script_by_hash_async(
-        self, script_hash: str, timeout: int = 300
-    ) -> Script:
-        """Get a script by its hash.
-
-        Args:
-            script_hash: The hash of the script to fetch.
-            timeout: The timeout in seconds. Defaults to 300.
-
-        Returns:
-            The script matching the hash.
-        """
-
-        results = await self._get_async(f"/scripts/{script_hash}", timeout=timeout)
-
-        return Script.model_validate(results)
 
     def get_metadata_by_tx(self, tx_hash: str, timeout: int = 300) -> Metadata:
         """Get a metadata by transaction hash.
@@ -579,13 +586,14 @@ class KupoClient:
         Returns:
             The metadata matching the hash.
         """
-
         results = self._get(f"/metadata/{tx_hash}", timeout=timeout)
 
         return Metadata.model_validate(results)
 
     async def get_metadata_by_tx_async(
-        self, tx_hash: str, timeout: int = 300
+        self,
+        tx_hash: str,
+        timeout: int = 300,
     ) -> Metadata:
         """Get a datum by its hash.
 
@@ -596,7 +604,6 @@ class KupoClient:
         Returns:
             The metadata matching the hash.
         """
-
         results = await self._get_async(f"/metadata/{tx_hash}", timeout=timeout)
 
         return Metadata.model_validate(results)
