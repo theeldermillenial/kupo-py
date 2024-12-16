@@ -7,6 +7,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Dict
 from typing import List
+from typing import Union
 
 from pydantic import BaseModel
 from pydantic import ConfigDict

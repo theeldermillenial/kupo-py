@@ -12,7 +12,12 @@ from typing import Self
 import aiohttp as aio  # type: ignore
 import requests
 from dotenv import load_dotenv  # type: ignore
+from pycardano import Address  # type: ignore
+from pycardano import AssetName  # type: ignore
+from pycardano import ScriptHash  # type: ignore
+from pycardano import TransactionId  # type: ignore
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import RootModel
 from pydantic import field_validator
@@ -22,6 +27,7 @@ from kupo.models import Datum
 from kupo.models import Match
 from kupo.models import Metadata
 from kupo.models import Pattern
+from kupo.models import Point
 from kupo.models import Script
 
 load_dotenv()
@@ -37,6 +43,13 @@ class Order(Enum):
     ASC = "least_recent_first"
 
 
+class Limit(Enum):
+    """Order of results by time."""
+
+    SAFE = "within_safe_zone"
+    UNSAFE = "unsafe_allow_beyond_safe_zone"
+
+
 class QueryBase(BaseModel):
     """Query paramete base model, includes utility functions."""
 
@@ -45,10 +58,10 @@ class QueryBase(BaseModel):
         return self.model_dump(mode="json", exclude_none=True)
 
 
-class BaseArray(RootModel):
+class BaseList(RootModel):
     """Base class for array responses."""
 
-    def __getitem__(self, index: int) -> Match:
+    def __getitem__(self, index: int) -> RootModel | str:
         """Get an item from the list."""
         return self.root[index]
 
@@ -56,14 +69,15 @@ class BaseArray(RootModel):
         """Get the length of the list."""
         return len(self.root)
 
-    def __iter__(self) -> Iterator[Match]:
+    def __iter__(self) -> Iterator[RootModel | str]:
         """Iterate over the list."""
-        return self.root
+        return iter(self.root)
 
 
 class MatchQuery(QueryBase):
     """Validator for the match query parameters."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     spent: bool = Field(False, exclude=True)
     unspent: bool = Field(False, exclude=True)
     order: Order = Order.DESC
@@ -71,9 +85,9 @@ class MatchQuery(QueryBase):
     spent_after: int | None = None
     created_before: int | None = None
     spent_before: int | None = None
-    policy_id: str | None = None
-    asset_name: str | None = None
-    transaction_id: str | None = None
+    policy_id: str | ScriptHash | None = None
+    asset_name: str | AssetName | None = None
+    transaction_id: str | TransactionId | None = None
     output_index: int | None = None
 
     def flags(self) -> list[str]:
@@ -93,9 +107,26 @@ class MatchQuery(QueryBase):
         "created_before",
         mode="before",
     )
-    def validate_int(self, v: float | str) -> int | None:
+    @classmethod
+    def validate_int(cls, v: float | str) -> int | None:
         """Convert timestamps to integers."""
         return None if v is None else int(v)
+
+    @field_validator(
+        "policy_id",
+        "asset_name",
+        "transaction_id",
+        mode="before",
+    )
+    @classmethod
+    def validate_pycardano(
+        cls,
+        v: str | ScriptHash | AssetName | TransactionId | None,
+    ) -> int | str | None:
+        """Convert timestamps to integers."""
+        if isinstance(v, ScriptHash | AssetName | TransactionId):
+            v = v.payload.hex()
+        return v
 
     @model_validator(mode="after")
     def validate_params(self) -> Self:
@@ -144,13 +175,13 @@ class MatchQuery(QueryBase):
         return self
 
 
-class MatchResponse(BaseArray):
+class MatchResponse(BaseList):
     """The response model for endpoints that return matches."""
 
     root: list[Match]
 
 
-class PatternResponse(BaseArray):
+class PatternResponse(BaseList):
     """The response model for endpoints that return patterns."""
 
     root: list[Pattern]
@@ -254,6 +285,34 @@ class KupoClient:
             response.raise_for_status()
             return response.json()
 
+    async def _put_async(
+        self,
+        path: str,
+        body: dict[str, Any] = {},
+        timeout: int = 300,
+    ) -> dict | list:
+        async with aio.ClientSession() as session:
+            path = self.base_url + path
+            async with session.put(
+                path,
+                json=body,
+                timeout=aio.ClientTimeout(total=timeout),
+            ) as response:
+                response.raise_for_status()
+                return await response.json()
+
+    def _put(
+        self,
+        path: str,
+        body: dict[str, Any] = {},
+        timeout: int = 300,
+    ) -> dict | list:
+        with requests.session() as session:
+            path = self.base_url + path
+            response = session.put(path, json=body, timeout=timeout)
+            response.raise_for_status()
+            return response.json()
+
     @rest_wrapper(param_model=MatchQuery)
     def get_all_matches(
         self,
@@ -264,9 +323,9 @@ class KupoClient:
         spent_after: int | str | None = None,
         created_before: int | str | None = None,
         spent_before: int | str | None = None,
-        policy_id: str | None = None,
-        asset_name: str | None = None,
-        transaction_id: str | None = None,
+        policy_id: str | ScriptHash | None = None,
+        asset_name: str | AssetName | None = None,
+        transaction_id: str | TransactionId | None = None,
         output_index: int | None = None,
         timeout: int = 300,
         model: MatchQuery | None = None,
@@ -277,10 +336,10 @@ class KupoClient:
             spent: Only return spent transactions. Defaults to False.
             unspent: Only return unspect transactions. Defaults to False.
             order: Must be Orders.ASC or Orders.DESC. Defaults to Order.DESC.
-            created_after: UTxO created after. Defaults to None.
-            spent_after: UTxO spent after. Defaults to None.
-            created_before: UTxO created before. Defaults to None.
-            spent_before: UTxO spent before. Defaults to None.
+            created_after: UTxO created after slot number. Defaults to None.
+            spent_after: UTxO spent after slot number. Defaults to None.
+            created_before: UTxO created before slot number. Defaults to None.
+            spent_before: UTxO spent before slot number. Defaults to None.
             policy_id: UTxO contains token with policy id. Defaults to None.
             asset_name: UTxO contains token with policy name. Defaults to None.
             transaction_id: UTxOs with transaction id. Defaults to None.
@@ -313,9 +372,9 @@ class KupoClient:
         spent_after: int | str | None = None,
         created_before: int | str | None = None,
         spent_before: int | str | None = None,
-        policy_id: str | None = None,
-        asset_name: str | None = None,
-        transaction_id: str | None = None,
+        policy_id: str | ScriptHash | None = None,
+        asset_name: str | AssetName | None = None,
+        transaction_id: str | TransactionId | None = None,
         output_index: int | None = None,
         timeout: int = 300,
         model: MatchQuery | None = None,
@@ -326,10 +385,10 @@ class KupoClient:
             spent: Only return spent transactions. Defaults to False.
             unspent: Only return unspect transactions. Defaults to False.
             order: Must be Orders.ASC or Orders.DESC. Defaults to Order.DESC.
-            created_after: UTxO created after. Defaults to None.
-            spent_after: UTxO spent after. Defaults to None.
-            created_before: UTxO created before. Defaults to None.
-            spent_before: UTxO spent before. Defaults to None.
+            created_after: UTxO created after slot number. Defaults to None.
+            spent_after: UTxO spent after slot number. Defaults to None.
+            created_before: UTxO created before slot number. Defaults to None.
+            spent_before: UTxO spent before slot number. Defaults to None.
             policy_id: UTxO contains token with policy id. Defaults to None.
             asset_name: UTxO contains token with policy name. Defaults to None.
             transaction_id: UTxOs with transaction id. Defaults to None.
@@ -355,7 +414,7 @@ class KupoClient:
     @rest_wrapper(param_model=MatchQuery)
     def get_matches(
         self,
-        pattern: str,
+        pattern: str | Address,
         spent: bool = False,
         unspent: bool = False,
         order: Order = Order.DESC,
@@ -363,24 +422,24 @@ class KupoClient:
         spent_after: int | str | None = None,
         created_before: int | str | None = None,
         spent_before: int | str | None = None,
-        policy_id: str | None = None,
-        asset_name: str | None = None,
-        transaction_id: str | None = None,
+        policy_id: str | ScriptHash | None = None,
+        asset_name: str | AssetName | None = None,
+        transaction_id: str | TransactionId | None = None,
         output_index: int | None = None,
         timeout: int = 300,
         model: MatchQuery | None = None,
     ) -> MatchResponse:
-        """Get matches for a pattern.
+        """Get all matches.
 
         Args:
             pattern: The pattern to match.
             spent: Only return spent transactions. Defaults to False.
             unspent: Only return unspect transactions. Defaults to False.
             order: Must be Orders.ASC or Orders.DESC. Defaults to Order.DESC.
-            created_after: UTxO created after. Defaults to None.
-            spent_after: UTxO spent after. Defaults to None.
-            created_before: UTxO created before. Defaults to None.
-            spent_before: UTxO spent before. Defaults to None.
+            created_after: UTxO created after slot number. Defaults to None.
+            spent_after: UTxO spent after slot number. Defaults to None.
+            created_before: UTxO created before slot number. Defaults to None.
+            spent_before: UTxO spent before slot number. Defaults to None.
             policy_id: UTxO contains token with policy id. Defaults to None.
             asset_name: UTxO contains token with policy name. Defaults to None.
             transaction_id: UTxOs with transaction id. Defaults to None.
@@ -406,7 +465,7 @@ class KupoClient:
     @rest_wrapper(param_model=MatchQuery, is_async=True)
     async def get_matches_async(
         self,
-        pattern: str,
+        pattern: str | Address,
         spent: bool = False,
         unspent: bool = False,
         order: Order = Order.DESC,
@@ -414,9 +473,9 @@ class KupoClient:
         spent_after: int | str | None = None,
         created_before: int | str | None = None,
         spent_before: int | str | None = None,
-        policy_id: str | None = None,
-        asset_name: str | None = None,
-        transaction_id: str | None = None,
+        policy_id: str | ScriptHash | None = None,
+        asset_name: str | AssetName | None = None,
+        transaction_id: str | TransactionId | None = None,
         output_index: int | None = None,
         timeout: int = 300,
         model: MatchQuery | None = None,
@@ -428,10 +487,10 @@ class KupoClient:
             spent: Only return spent transactions. Defaults to False.
             unspent: Only return unspect transactions. Defaults to False.
             order: Must be Orders.ASC or Orders.DESC. Defaults to Order.DESC.
-            created_after: UTxO created after. Defaults to None.
-            spent_after: UTxO spent after. Defaults to None.
-            created_before: UTxO created before. Defaults to None.
-            spent_before: UTxO spent before. Defaults to None.
+            created_after: UTxO created after slot number. Defaults to None.
+            spent_after: UTxO spent after slot number. Defaults to None.
+            created_before: UTxO created before slot number. Defaults to None.
+            spent_before: UTxO spent before slot number. Defaults to None.
             policy_id: UTxO contains token with policy id. Defaults to None.
             asset_name: UTxO contains token with policy name. Defaults to None.
             transaction_id: UTxOs with transaction id. Defaults to None.
@@ -607,3 +666,77 @@ class KupoClient:
         results = await self._get_async(f"/metadata/{tx_hash}", timeout=timeout)
 
         return Metadata.model_validate(results)
+
+    def add_pattern(
+        self,
+        pattern: str,
+        rollback_to: int | dict | Point,
+        limit: Limit = Limit.SAFE,
+        timeout: int = 300,
+    ) -> PatternResponse:
+        """Add a pattern to the database.
+
+        Args:
+            pattern: The capture pattern.
+            rollback_to: The point to rollback to. Must be either a slot number (int),
+                a Point object, or a dictionary with keys `slot_no` (required) and
+                `header_hash` (optional).
+            limit: Use safe or unsafe boundaries as defined in the docs.
+                Defaults to Limit.SAFE.
+            timeout: Timeout for the request. Defaults to 300.
+
+        Returns:
+            A PatternResponse object.
+        """
+        if isinstance(rollback_to, Point):
+            rollback_to = rollback_to.model_dump(mode="json")
+        elif isinstance(rollback_to, int):
+            rollback_to = {"slot_no": rollback_to}
+
+        if "slot_no" not in rollback_to:
+            raise ValueError("rollback_to must contain slot_no")
+
+        results = self._put(
+            f"/patterns/{pattern}",
+            body={"rollback_to": rollback_to, "limit": limit.value},
+            timeout=timeout,
+        )
+
+        return PatternResponse.model_validate(results)
+
+    async def add_pattern_async(
+        self,
+        pattern: str,
+        rollback_to: int | dict | Point,
+        limit: Limit = Limit.SAFE,
+        timeout: int = 300,
+    ) -> PatternResponse:
+        """Add a pattern to the database.
+
+        Args:
+            pattern: The capture pattern.
+            rollback_to: The point to rollback to. Must be either a slot number (int),
+                a Point object, or a dictionary with keys `slot_no` (required) and
+                `header_hash` (optional).
+            limit: Use safe or unsafe boundaries as defined in the docs.
+                Defaults to Limit.SAFE.
+            timeout: Timeout for the request. Defaults to 300.
+
+        Returns:
+            A PatternResponse object.
+        """
+        if isinstance(rollback_to, Point):
+            rollback_to = rollback_to.model_dump(mode="json")
+        elif isinstance(rollback_to, int):
+            rollback_to = {"slot_no": rollback_to}
+
+        if "slot_no" not in rollback_to:
+            raise ValueError("rollback_to must contain slot_no")
+
+        results = await self._put_async(
+            f"/patterns/{pattern}",
+            body={"rollback_to": rollback_to, "limit": limit.value},
+            timeout=timeout,
+        )
+
+        return PatternResponse.model_validate(results)
