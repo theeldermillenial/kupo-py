@@ -423,6 +423,7 @@ class KupoClient:
     def get_matches(
         self,
         pattern: str | Address,
+        resolve_hashes: bool = False,
         spent: bool = False,
         unspent: bool = False,
         order: Order = Order.DESC,
@@ -441,6 +442,7 @@ class KupoClient:
 
         Args:
             pattern: The pattern to match.
+            resolve_hashes: Resolve hashes to human readable strings. Defaults to False.
             spent: Only return spent transactions. Defaults to False.
             unspent: Only return unspect transactions. Defaults to False.
             order: Must be Orders.ASC or Orders.DESC. Defaults to Order.DESC.
@@ -474,6 +476,7 @@ class KupoClient:
     async def get_matches_async(
         self,
         pattern: str | Address,
+        resolve_hashes: bool = False,
         spent: bool = False,
         unspent: bool = False,
         order: Order = Order.DESC,
@@ -492,6 +495,7 @@ class KupoClient:
 
         Args:
             pattern: The pattern to match.
+            resolve_hashes: Resolve hashes to human readable strings. Defaults to False.
             spent: Only return spent transactions. Defaults to False.
             unspent: Only return unspect transactions. Defaults to False.
             order: Must be Orders.ASC or Orders.DESC. Defaults to Order.DESC.
