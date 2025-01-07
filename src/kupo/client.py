@@ -78,6 +78,7 @@ class MatchQuery(QueryBase):
     """Validator for the match query parameters."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    resolve_hashes: bool = Field(False, exclude=True)
     spent: bool = Field(False, exclude=True)
     unspent: bool = Field(False, exclude=True)
     order: Order = Order.DESC
@@ -97,6 +98,9 @@ class MatchQuery(QueryBase):
             flags.append("spent")
         elif self.unspent:
             flags.append("unspent")
+
+        if self.resolve_hashes:
+            flags.append("resolve_hashes")
 
         return flags
 
@@ -316,6 +320,7 @@ class KupoClient:
     @rest_wrapper(param_model=MatchQuery)
     def get_all_matches(
         self,
+        resolve_hashes: bool = False,
         spent: bool = False,
         unspent: bool = False,
         order: Order = Order.DESC,
@@ -333,6 +338,7 @@ class KupoClient:
         """Get all matches.
 
         Args:
+            resolve_hashes: Resolve hashes to human readable strings. Defaults to False.
             spent: Only return spent transactions. Defaults to False.
             unspent: Only return unspect transactions. Defaults to False.
             order: Must be Orders.ASC or Orders.DESC. Defaults to Order.DESC.
@@ -365,6 +371,7 @@ class KupoClient:
     @rest_wrapper(param_model=MatchQuery, is_async=True)
     async def get_all_matches_async(
         self,
+        resolve_hashes: bool = False,
         spent: bool = False,
         unspent: bool = False,
         order: Order = Order.DESC,
@@ -382,6 +389,7 @@ class KupoClient:
         """Get all matches.
 
         Args:
+            resolve_hashes: Resolve hashes to human readable strings. Defaults to False.
             spent: Only return spent transactions. Defaults to False.
             unspent: Only return unspect transactions. Defaults to False.
             order: Must be Orders.ASC or Orders.DESC. Defaults to Order.DESC.
