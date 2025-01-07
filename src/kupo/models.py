@@ -386,16 +386,16 @@ class Pattern(
         Union[
             Wildcard,
             str,
-            constr(pattern=r"[0-9a-f]{56}\.(*|[0-9a-f]{2,64})"),
-            constr(pattern=r"(*|[0-9]+)@[0-9a-f]{64}"),
+            constr(pattern=r"[0-9a-f]{56}\.(.*|[0-9a-f]{2,64})"),
+            constr(pattern=r"(.*|[0-9]+)@[0-9a-f]{64}"),
         ]
     ]
 ):
     root: Union[
         Wildcard,
         str,
-        constr(pattern=r"[0-9a-f]{56}\.(*|[0-9a-f]{2,64})"),
-        constr(pattern=r"(*|[0-9]+)@[0-9a-f]{64}"),
+        constr(pattern=r"[0-9a-f]{56}\.(.*|[0-9a-f]{2,64})"),
+        constr(pattern=r"(.*|[0-9]+)@[0-9a-f]{64}"),
     ] = Field(
         ...,
         description=(
