@@ -1,6 +1,6 @@
 [project]
 name = "kupo-py"
-version = "0.0.2"
+version = "0.1.0-dev1"
 description = "A Cardano Kupo client for Python."
 readme = "README.md"
 authors = [
