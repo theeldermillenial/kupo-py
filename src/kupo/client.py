@@ -24,6 +24,7 @@ from pydantic import field_validator
 from pydantic import model_validator
 
 from kupo.models import Datum
+from kupo.models import Health
 from kupo.models import Match
 from kupo.models import Metadata
 from kupo.models import Pattern
@@ -269,6 +270,7 @@ class KupoClient:
             async with session.get(
                 path,
                 params=params,
+                headers={"Accept": "application/json"},
                 timeout=aio.ClientTimeout(total=timeout),
             ) as response:
                 response.raise_for_status()
@@ -285,7 +287,12 @@ class KupoClient:
             path = self.base_url + path
             if len(flags) > 0:
                 path += "?" + "&".join(flags)
-            response = session.get(path, params=params, timeout=timeout)
+            response = session.get(
+                path,
+                headers={"Accept": "application/json"},
+                params=params,
+                timeout=timeout,
+            )
             response.raise_for_status()
             return response.json()
 
@@ -300,6 +307,7 @@ class KupoClient:
             async with session.put(
                 path,
                 json=body,
+                headers={"Accept": "application/json"},
                 timeout=aio.ClientTimeout(total=timeout),
             ) as response:
                 response.raise_for_status()
@@ -313,7 +321,12 @@ class KupoClient:
     ) -> dict | list:
         with requests.session() as session:
             path = self.base_url + path
-            response = session.put(path, json=body, timeout=timeout)
+            response = session.put(
+                path,
+                headers={"Accept": "application/json"},
+                json=body,
+                timeout=timeout,
+            )
             response.raise_for_status()
             return response.json()
 
@@ -752,3 +765,11 @@ class KupoClient:
         )
 
         return PatternResponse.model_validate(results)
+
+    def health(self) -> Health:
+        """Check the health of the API."""
+        return Health.model_validate(self._get("/health"))
+
+    async def health_async(self) -> Health:
+        """Check the health of the API."""
+        return Health.model_validate(await self._get_async("/health"))
