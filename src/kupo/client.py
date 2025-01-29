@@ -766,6 +766,88 @@ class KupoClient:
 
         return PatternResponse.model_validate(results)
 
+    def bulk_add_pattern(
+        self,
+        patterns: list[str],
+        rollback_to: int | dict | Point,
+        limit: Limit = Limit.SAFE,
+        timeout: int = 300,
+    ) -> PatternResponse:
+        """Add multiple patterns to the database.
+
+        Args:
+            patterns: The capture patterns.
+            rollback_to: The point to rollback to. Must be either a slot number (int),
+                a Point object, or a dictionary with keys `slot_no` (required) and
+                `header_hash` (optional).
+            limit: Use safe or unsafe boundaries as defined in the docs.
+                Defaults to Limit.SAFE.
+            timeout: Timeout for the request. Defaults to 300.
+
+        Returns:
+            A PatternResponse object.
+        """
+        if isinstance(rollback_to, Point):
+            rollback_to = rollback_to.model_dump(mode="json")
+        elif isinstance(rollback_to, int):
+            rollback_to = {"slot_no": rollback_to}
+
+        if "slot_no" not in rollback_to:
+            raise ValueError("rollback_to must contain slot_no")
+
+        results = self._put(
+            "/patterns",
+            body={
+                "patterns": patterns,
+                "rollback_to": rollback_to,
+                "limit": limit.value,
+            },
+            timeout=timeout,
+        )
+
+        return PatternResponse.model_validate(results)
+
+    async def bulk_add_pattern_async(
+        self,
+        patterns: list[str],
+        rollback_to: int | dict | Point,
+        limit: Limit = Limit.SAFE,
+        timeout: int = 300,
+    ) -> PatternResponse:
+        """Add multiple patterns to the database.
+
+        Args:
+            patterns: The capture patterns.
+            rollback_to: The point to rollback to. Must be either a slot number (int),
+                a Point object, or a dictionary with keys `slot_no` (required) and
+                `header_hash` (optional).
+            limit: Use safe or unsafe boundaries as defined in the docs.
+                Defaults to Limit.SAFE.
+            timeout: Timeout for the request. Defaults to 300.
+
+        Returns:
+            A PatternResponse object.
+        """
+        if isinstance(rollback_to, Point):
+            rollback_to = rollback_to.model_dump(mode="json")
+        elif isinstance(rollback_to, int):
+            rollback_to = {"slot_no": rollback_to}
+
+        if "slot_no" not in rollback_to:
+            raise ValueError("rollback_to must contain slot_no")
+
+        results = await self._put_async(
+            "/patterns",
+            body={
+                "patterns": patterns,
+                "rollback_to": rollback_to,
+                "limit": limit.value,
+            },
+            timeout=timeout,
+        )
+
+        return PatternResponse.model_validate(results)
+
     def health(self) -> Health:
         """Check the health of the API."""
         return Health.model_validate(self._get("/health"))
