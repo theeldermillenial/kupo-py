@@ -1,7 +1,5 @@
 import pytest
 
-from charli3_dendrite import MinswapCPPState
-
 
 def test_get_all_matches(
     benchmark,
