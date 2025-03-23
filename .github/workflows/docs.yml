@@ -31,14 +31,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      - name: Install dependencies
+          python-version: '3.12'
+      - name: Install uv
         run: |
-          python -m pip install --upgrade pip
-          pip install mkdocs-material mkdocstrings[python] griffe-pydantic
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Install build dependencies
+        run: |
+          uv pip install mkdocs-material mkdocstrings[python] griffe-pydantic pydantic
       - name: Build with MkDocs
         run: mkdocs build
 
