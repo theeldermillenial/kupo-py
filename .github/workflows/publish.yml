@@ -32,7 +32,7 @@ jobs:
     
     - name: Install build dependencies
       run: |
-        uv pip install build bump-my-version
+        uv pip install build bump-my-version --system
     
     - name: Configure Git
       run: |
@@ -93,7 +93,7 @@ jobs:
     
     - name: Install build dependencies
       run: |
-        uv pip install build bump-my-version
+        uv pip install bump-my-version --system
     
     - name: Configure Git
       run: |
@@ -108,11 +108,11 @@ jobs:
         git push --tags
     
     - name: Build package
-      run: python -m build
+      run: uv build
     
     - name: Publish to PyPI
       env:
         UV_PUBLISH_USERNAME: __token__
         UV_PUBLISH_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
-        uv pip publish dist/*
+        uv publish
