@@ -1,0 +1,76 @@
+site_name: kupo-py
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+repo_url: https://github.com/theeldermillenial/kupo-py
+repo_name: theeldermillenial/kupo-py
+
+docs_dir: docs
+site_dir: site
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            show_signature_annotations: true
+            show_bases: true
+            merge_init_into_class: true
+            docstring_section_style: spacy
+            show_if_no_docstring: false
+            separate_signature: true
+            filters: ["!^_"]
+            heading_level: 2
+            extensions:
+              - griffe_pydantic:
+                  schema: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Installation Guide: installation.md
+  - Examples: examples.md
+  - API Reference:
+    - Client: api/client.md
+    - Models: api/models.md
