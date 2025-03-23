@@ -1,74 +1,32 @@
 name: Documentation
 
-on:
-  workflow_dispatch:  # Allow manual triggering
-  workflow_run:
-    workflows: ["Build and Publish"]
-    types:
-      - completed
-    branches:
-      - main
-      - master
-
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# Allow only one concurrent deployment
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
 
 jobs:
-  # Build job
-  build:
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_branch }}
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      - name: Install build dependencies
-        run: |
-          uv pip install mkdocs-material mkdocstrings[python] griffe-pydantic pydantic --system
-      - name: Build with MkDocs
-        run: mkdocs build
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: site
-          path: site/
-
-  # Deployment job
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v3
+      - uses: actions/checkout@v4
+      - name: Configure Git Credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+      - uses: actions/setup-python@v5
         with:
-          name: site
-          path: site/
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+          python-version: 3.x
+      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV 
+      - uses: actions/cache@v4
         with:
-          path: site/
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4 
+          key: mkdocs-material-${{ env.cache_id }}
+          path: .cache 
+          restore-keys: |
+            mkdocs-material-
+      - run: pip install mkdocs-material 
+      - run: mkdocs gh-deploy --force
