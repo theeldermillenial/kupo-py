@@ -1,6 +1,6 @@
 [project]
 name = "kupo-py"
-version = "0.1.0-dev6"
+version = "0.1.0-dev9"
 description = "A Cardano Kupo client for Python."
 readme = "README.md"
 authors = [
@@ -13,7 +13,7 @@ dependencies = [
     "bump2version>=1.0.1",
     "pycardano>=0.11.1",
     "pydantic>=2.10.3",
-    "python-dotenv==0.21.1",
+    "python-dotenv==1.0.1",
     "requests>=2.32.3",
     "setuptools>=75.6.0",
 ]
@@ -40,7 +40,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.bumpversion]
-current_version = "0.1.0-dev6"
+current_version = "0.1.0-dev9"
 parse = """(?x)
     (?P<major>\\d+)\\.
     (?P<minor>\\d+)\\.
@@ -63,6 +63,9 @@ allow_dirty = false
 commit = true
 message = "Bump version: {current_version} → {new_version}"
 commit_args = "--no-verify"
+
+[tool.uv.sources]
+charli3-dendrite = { git = "https://github.com/theeldermillenial/charli3-dendrite", rev = "feat/sundae-batcher" }
 
 [tool.bumpversion.parts.release]
 values = ["dev", "release"]
