@@ -1,10 +1,14 @@
 name: Documentation
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:  # Allow manual triggering
+  workflow_run:
+    workflows: ["Build and Publish"]
+    types:
+      - completed
+    branches:
+      - main
+      - master
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -20,10 +24,13 @@ concurrency:
 jobs:
   # Build job
   build:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -31,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install mkdocs-material
+          pip install mkdocs-material mkdocstrings[python] griffe-pydantic
       - name: Build with MkDocs
         run: mkdocs build
 
@@ -45,6 +52,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
