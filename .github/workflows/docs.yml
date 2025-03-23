@@ -44,6 +44,11 @@ jobs:
           uv pip install mkdocs-material mkdocstrings[python] griffe-pydantic pydantic --system
       - name: Build with MkDocs
         run: mkdocs build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: site
+          path: site/
 
   # Deployment job
   deploy:
@@ -53,16 +58,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Download artifact
+        uses: actions/download-artifact@v3
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
+          name: site
+          path: site/
       - name: Setup Pages
         uses: actions/configure-pages@v4
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './site'
+          path: site/
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4 
