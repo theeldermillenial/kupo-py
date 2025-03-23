@@ -1,6 +1,6 @@
 [project]
 name = "kupo-py"
-version = "0.1.1-dev0"
+version = "0.1.1-dev1"
 description = "A Cardano Kupo client for Python."
 readme = "README.md"
 authors = [
@@ -49,7 +49,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.bumpversion]
-current_version = "0.1.1-dev0"
+current_version = "0.1.1-dev1"
 parse = """(?x)
     (?P<major>\\d+)\\.
     (?P<minor>\\d+)\\.
