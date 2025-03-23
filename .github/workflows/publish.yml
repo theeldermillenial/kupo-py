@@ -11,9 +11,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  bump-version:
+  build-and-publish:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev'
     
     steps:
     - uses: actions/checkout@v4
@@ -40,6 +39,7 @@ jobs:
         git config --global user.email "actions@github.com"
     
     - name: Get merged branch name
+      if: github.ref == 'refs/heads/dev'
       id: merged-branch
       run: |
         if [[ ${{ github.event_name }} == 'push' ]]; then
@@ -51,54 +51,32 @@ jobs:
         fi
         echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
     
+    - name: Check current version
+      if: github.ref == 'refs/heads/dev'
+      id: current-version
+      run: |
+        CURRENT_VERSION=$(grep 'current_version = ' pyproject.toml | cut -d'"' -f2)
+        echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+    
     - name: Determine version bump type
+      if: github.ref == 'refs/heads/dev'
       id: version-bump
       run: |
-        if [[ ${{ steps.merged-branch.outputs.branch_name }} =~ ^(feat|feature)/ ]]; then
-          echo "bump_type=minor" >> $GITHUB_OUTPUT
-        elif [[ ${{ steps.merged-branch.outputs.branch_name }} =~ ^(fix|bugfix)/ ]]; then
-          echo "bump_type=patch" >> $GITHUB_OUTPUT
-        else
+        CURRENT_VERSION=${{ steps.current-version.outputs.version }}
+        if [[ $CURRENT_VERSION =~ -dev[0-9]+$ ]]; then
           echo "bump_type=dev" >> $GITHUB_OUTPUT
+        elif [[ ${{ steps.merged-branch.outputs.branch_name }} =~ ^(feat|feature)/ ]]; then
+          echo "bump_type=minor" >> $GITHUB_OUTPUT
+        else
+          echo "bump_type=patch" >> $GITHUB_OUTPUT
         fi
     
-    - name: Bump version
+    - name: Bump version on dev
+      if: github.ref == 'refs/heads/dev'
       run: |
-        if [[ ${{ steps.version-bump.outputs.bump_type }} == "dev" ]]; then
-          bump-my-version bump dev
-        else
-          bump-my-version bump ${{ steps.version-bump.outputs.bump_type }}
-        fi
+        bump-my-version bump ${{ steps.version-bump.outputs.bump_type }}
         git push
         git push --tags
-
-  build-and-publish:
-    needs: bump-version
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Required for bump-my-version to work with tags
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    
-    - name: Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-    
-    - name: Install build dependencies
-      run: |
-        uv pip install bump-my-version --system
-    
-    - name: Configure Git
-      run: |
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
     
     - name: Bump version on master
       if: github.ref == 'refs/heads/master'
