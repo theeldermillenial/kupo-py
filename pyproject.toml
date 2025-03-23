@@ -18,6 +18,11 @@ dependencies = [
     "setuptools>=75.6.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/theeldermillenial/kupo-py"
+Repository = "https://github.com/theeldermillenial/kupo-py.git"
+Issues = "https://github.com/theeldermillenial/kupo-py/issues"
+
 [dependency-groups]
 dev = [
     "black>=24.10.0",
