@@ -41,7 +41,7 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Install build dependencies
         run: |
-          uv pip install mkdocs-material mkdocstrings[python] griffe-pydantic pydantic
+          uv pip install mkdocs-material mkdocstrings[python] griffe-pydantic pydantic --system
       - name: Build with MkDocs
         run: mkdocs build
 
