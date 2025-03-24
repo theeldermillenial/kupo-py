@@ -1,9 +1,14 @@
 # kupo-py
 
+<div align="center">
+
 [![PyPI version](https://badge.fury.io/py/kupo-py.svg)](https://badge.fury.io/py/kupo-py)
 [![GitHub Actions Status](https://github.com/theeldermillenial/kupo-py/actions/workflows/publish.yml/badge.svg)](https://github.com/theeldermillenial/kupo-py/actions)
+[![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://theeldermillenial.github.io/kupo-py/)
 [![Downloads](https://static.pepy.tech/badge/kupo-py)](https://pepy.tech/project/kupo-py)
 [![Monthly Downloads](https://static.pepy.tech/badge/kupo-py/month)](https://pepy.tech/project/kupo-py)
+
+</div>
 
 A Python client for interacting with [Kupo](https://cardanosolutions.github.io/kupo/), a lightweight and fast Cardano blockchain indexer. This client provides a simple and intuitive interface to query and interact with Kupo's HTTP API.
 
@@ -13,6 +18,10 @@ A Python client for interacting with [Kupo](https://cardanosolutions.github.io/k
 - Type-safe responses using Pydantic models
 - Comprehensive API coverage
 - Easy-to-use interface for common Kupo operations
+
+## Documentation
+
+Full documentation is available at [https://theeldermillenial.github.io/kupo-py/](https://theeldermillenial.github.io/kupo-py/).
 
 ## Installation
 
