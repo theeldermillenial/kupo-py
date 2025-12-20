@@ -1,0 +1,59 @@
+services:
+  kupo-primary:
+    image: 'cardanosolutions/kupo:v2.11.0'
+    command:
+      - '--ogmios-host'
+      - 95.217.141.50
+      - '--ogmios-port'
+      - '80'
+      - '--since'
+      - 173404777.8a3049aff036742d845653d5add06432c34fe589d31c4ef9d24c9268c5594618
+      - '--workdir'
+      - /data
+      - '--host'
+      - 0.0.0.0
+      - '--match'
+      - 'e0302560ced2fdcbfcb2602697df970cd0d6a38f94b32703f51c312b/*' # SundaeSwapV3 pool
+      - '--match'
+      - 'fa6a58bbe2d0ff05534431c8e2f0ef2cbdc1602a8456e4b13c8f3077/*' # SundaeSwapV3 orders
+    volumes:
+      -
+        type: bind
+        source: ./.data/kupo-primary
+        target: /data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:1442/health | grep 200 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 1442:1442
+  kupo-secondary:
+    image: 'cardanosolutions/kupo:v2.11.0'
+    command:
+      - '--ogmios-host'
+      - 95.217.141.50
+      - '--ogmios-port'
+      - '80'
+      - '--since'
+      - 173404777.8a3049aff036742d845653d5add06432c34fe589d31c4ef9d24c9268c5594618
+      - '--workdir'
+      - /data
+      - '--host'
+      - 0.0.0.0
+      - '--match'
+      - 'e0302560ced2fdcbfcb2602697df970cd0d6a38f94b32703f51c312b/*' # SundaeSwapV3 pool
+      - '--match'
+      - 'fa6a58bbe2d0ff05534431c8e2f0ef2cbdc1602a8456e4b13c8f3077/*' # SundaeSwapV3 orders
+    volumes:
+      -
+        type: bind
+        source: ./.data/kupo-secondary
+        target: /data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:1442/health | grep 200 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 1443:1442

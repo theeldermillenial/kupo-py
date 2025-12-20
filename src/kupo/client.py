@@ -262,6 +262,7 @@ class KupoClient:
         params: dict[str, Any] = {},
         flags: list[str] = [],
         timeout: int = 300,
+        include_status: bool = False,
     ) -> dict | list:
         path = self.base_url + path
         if len(flags) > 0:
@@ -274,7 +275,10 @@ class KupoClient:
                 timeout=aio.ClientTimeout(total=timeout),
             ) as response:
                 response.raise_for_status()
-                return await response.json()
+                result = await response.json()
+                if include_status:
+                    result["status_code"] = response.status
+                return result
 
     def _get(
         self,
@@ -282,6 +286,7 @@ class KupoClient:
         params: dict[str, Any] = {},
         flags: list[str] = [],
         timeout: int = 300,
+        include_status: bool = False,
     ) -> dict | list:
         with requests.session() as session:
             path = self.base_url + path
@@ -294,13 +299,17 @@ class KupoClient:
                 timeout=timeout,
             )
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            if include_status:
+                result["status_code"] = response.status_code
+            return result
 
     async def _put_async(
         self,
         path: str,
         body: dict[str, Any] = {},
         timeout: int = 300,
+        include_status: bool = False,
     ) -> dict | list:
         async with aio.ClientSession() as session:
             path = self.base_url + path
@@ -311,13 +320,17 @@ class KupoClient:
                 timeout=aio.ClientTimeout(total=timeout),
             ) as response:
                 response.raise_for_status()
-                return await response.json()
+                result = await response.json()
+                if include_status:
+                    result["status_code"] = response.status
+                return result
 
     def _put(
         self,
         path: str,
         body: dict[str, Any] = {},
         timeout: int = 300,
+        include_status: bool = False,
     ) -> dict | list:
         with requests.session() as session:
             path = self.base_url + path
@@ -328,7 +341,10 @@ class KupoClient:
                 timeout=timeout,
             )
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            if include_status:
+                result["status_code"] = response.status_code
+            return result
 
     @rest_wrapper(param_model=MatchQuery)
     def get_all_matches(
@@ -850,8 +866,14 @@ class KupoClient:
 
     def health(self) -> Health:
         """Check the health of the API."""
-        return Health.model_validate(self._get("/health"))
+        result = self._get("/health", include_status=True)
+        assert isinstance(result, dict)
+        result["syncing"] = result["status_code"] == 202
+        return Health.model_validate(result)
 
     async def health_async(self) -> Health:
         """Check the health of the API."""
-        return Health.model_validate(await self._get_async("/health"))
+        result = await self._get_async("/health", include_status=True)
+        assert isinstance(result, dict)
+        result["syncing"] = result["status_code"] == 202
+        return Health.model_validate(result)

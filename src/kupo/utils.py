@@ -24,3 +24,24 @@ ERA_BOUNDARIES = {
         header_hash="c58a24ba8203e7629422a24d9dc68ce2ed495420bf40d9dab124373655161a20",
     ),
 }
+
+
+def slot_to_timestamp(slot: int) -> int:
+    """Convert a slot number to a Shelley era POSIX timestamp.
+
+    The Shelley era started at slot 4492800, which corresponds to 1591566291 in POSIX.
+    During the Byron era, the slot time was 20 seconds so this function will be
+    inaccurate prior to the Shelley era.
+
+    Reference:
+    https://cardano.stackexchange.com/questions/491/calculate-timestamp-from-slot
+    """
+    return slot + 1591566291
+
+
+def timestamp_to_slot(timestamp: int) -> int:
+    """Convert a POSIX timestamp to a slot number.
+
+    This is the reverse of `slot_to_timestamp`. See that function for more details.
+    """
+    return timestamp - 1591566291

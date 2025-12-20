@@ -5,9 +5,18 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Optional, Union
-
-from pydantic import BaseModel, ConfigDict, Field, RootModel, conint, constr
+from typing import Dict, List, Optional, Self, Union, Iterator
+from itertools import cycle
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    RootModel,
+    conint,
+    constr,
+    model_validator,
+)
 
 
 class AddressShelley(RootModel[str]):
@@ -280,10 +289,16 @@ class Health(BaseModel):
     )
     most_recent_checkpoint: Optional[conint(ge=0)] = None
     most_recent_node_tip: Optional[conint(ge=0)] = None
+    seconds_since_last_block: Optional[int] = None
+    network_synchronization: Optional[float] = None
     configuration: Configuration = Field(
         ..., description="A summary of hand-picked configuration parameters."
     )
     version: str = Field(..., description="Current software version.")
+    status_code: int = Field(
+        ..., description="The HTTP status code of the last request."
+    )
+    syncing: bool = Field(..., description="Whether the server is syncing.")
 
 
 class HealthPrometheus(RootModel[str]):
@@ -598,6 +613,66 @@ class MetadatumMap(BaseModel):
             " }\n  ]\n}\n```\n"
         ),
     )
+
+
+class KupoServer(BaseModel):
+    """A Kupo server configuration."""
+
+    url: str = Field(..., description="The URL of the Kupo server.")
+    health: Optional[Health] = Field(
+        None, description="The health status of the Kupo server."
+    )
+
+
+class DbsyncServer(BaseModel):
+    """A Dbsync server configuration.
+
+    This should be a fully connection string for the Dbsync server.
+    It should include the protocol, host, port, and any authentication credentials.
+    """
+
+    url: str = Field(..., description="The URL of the Dbsync server.")
+
+
+class RoundRobin(BaseModel):
+    """A round-robin server selector."""
+
+    kupo_servers: List[KupoServer] = Field(..., description="The list of Kupo servers.")
+    dbsync_servers: List[DbsyncServer] = Field(
+        ..., description="The list of Dbsync servers."
+    )
+
+    _kupo_cycle: PrivateAttr[Iterator[Optional[KupoServer]]] = PrivateAttr(None)
+    _dbsync_cycle: PrivateAttr[Iterator[Optional[DbsyncServer]]] = PrivateAttr(None)
+
+    @model_validator(mode="after")
+    def validate_servers(self) -> Self:
+        """Create the cycles."""
+        if len(self.kupo_servers) > 0:
+            self._kupo_cycle = cycle(self.kupo_servers)
+        else:
+            self._kupo_cycle = None
+        if len(self.dbsync_servers) > 0:
+            self._dbsync_cycle = cycle(self.dbsync_servers)
+        else:
+            self._dbsync_cycle = None
+        return self
+
+    def next(self) -> Optional[Union[KupoServer, DbsyncServer]]:
+        """Get the next healthy Kupo or Dbsync server."""
+        if self._kupo_cycle is not None:
+            for _ in range(len(self.kupo_servers)):
+                kupo_instance = next(self._kupo_cycle)
+                if (
+                    kupo_instance.health is not None
+                    and not kupo_instance.health.syncing
+                ):
+                    return kupo_instance
+
+        if self._dbsync_cycle is not None:
+            return next(self._dbsync_cycle)
+
+        return None
 
 
 Metadata.model_rebuild()
