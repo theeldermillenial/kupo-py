@@ -45,17 +45,21 @@ class Order(Enum):
 
 
 class Limit(Enum):
-    """Order of results by time."""
+    """Rollback limit when adding patterns.
+
+    SAFE: Only allow rollback within the safe zone (~36 hours / 129,600 slots).
+    UNSAFE: Allow rollback beyond the safe zone (may cause temporary inconsistencies).
+    """
 
     SAFE = "within_safe_zone"
     UNSAFE = "unsafe_allow_beyond_safe_zone"
 
 
 class QueryBase(BaseModel):
-    """Query paramete base model, includes utility functions."""
+    """Query parameter base model with utility functions."""
 
     def params(self) -> dict[str, Any]:
-        """Paramters for the query."""
+        """Get parameters for the query as a dictionary."""
         return self.model_dump(mode="json", exclude_none=True)
 
 
@@ -128,7 +132,7 @@ class MatchQuery(QueryBase):
         cls,
         v: str | ScriptHash | AssetName | TransactionId | None,
     ) -> int | str | None:
-        """Convert timestamps to integers."""
+        """Convert PyCardano types to hex strings."""
         if isinstance(v, ScriptHash | AssetName | TransactionId):
             v = v.payload.hex()
         return v
@@ -383,7 +387,7 @@ class KupoClient:
             model: The MatchQuery model. Will use if supplied. Defaults to None.
 
         Returns:
-            _description_
+            A MatchResponse containing all matching UTxOs.
         """
         if model is None:
             raise ValueError("model must be None")
@@ -434,7 +438,7 @@ class KupoClient:
             model: The MatchQuery model. Will use if supplied. Defaults to None.
 
         Returns:
-            _description_
+            A MatchResponse containing all matching UTxOs.
         """
         if model is None:
             raise ValueError("model must be None")
@@ -695,14 +699,14 @@ class KupoClient:
         tx_hash: str,
         timeout: int = 300,
     ) -> Metadata:
-        """Get a datum by its hash.
+        """Get metadata by transaction hash.
 
         Args:
-            tx_hash: The hash of the metadata to fetch.
+            tx_hash: The hash of the transaction to fetch metadata for.
             timeout: The timeout in seconds. Defaults to 300.
 
         Returns:
-            The metadata matching the hash.
+            The metadata for the transaction.
         """
         results = await self._get_async(f"/metadata/{tx_hash}", timeout=timeout)
 

@@ -1,4 +1,4 @@
-# noqa
+"""Utility functions for working with Cardano slots and timestamps."""
 
 from kupo.models import Point
 

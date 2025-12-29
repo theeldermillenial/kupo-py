@@ -1,3 +1,9 @@
+"""FastAPI server for load balancing across multiple Kupo instances.
+
+This module provides a proxy server that distributes requests across multiple
+Kupo instances using round-robin load balancing, with optional DBSync fallback.
+"""
+
 import os
 from contextlib import asynccontextmanager
 from functools import partial
@@ -31,7 +37,8 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger = logging.getLogger("kupo")
+logger = logging.getLogger("kupo.server")
+logger.setLevel(os.getenv("KUPO_PY_LOG_LEVEL", "INFO"))
 
 # Global variables
 check_task = None
@@ -146,6 +153,11 @@ async def check_health():
         )
 
         for s, health in zip(round_robin.kupo_servers, health_checks):
+            logger.debug(
+                "Health check result for %s: %s",
+                s.url,
+                health.status_code == 200 and not health.syncing,
+            )
             s.health = health
 
         return
@@ -161,6 +173,11 @@ async def check_health():
     for client, s in zip(kupo_clients, round_robin.kupo_servers):
         try:
             health = await client.health_async()
+            logger.debug(
+                "Health check result for %s: %s",
+                s.url,
+                health.status_code == 200 and not health.syncing,
+            )
             s.health = health
         except ClientResponseError as e:
             logger.warning("Error checking %s instance: %s", s.url, e)
@@ -170,7 +187,7 @@ async def check_health():
 async def sync_patterns():
     """Synchronize patterns between Kupo instances."""
 
-    # Only synce if there is more than one instance and all are healthy
+    # Only sync if there is more than one instance and all are healthy
     if len(round_robin.kupo_servers) > 1:
         if None in [s.health for s in round_robin.kupo_servers]:
             return
@@ -213,12 +230,13 @@ async def sync_patterns():
 
 
 async def check_periodically():
+    """Periodically check health and sync patterns."""
     count = 0
     while True:
         await check_health()
         count += 1
         count %= PATTERN_SYNC_INTERVAL
-        if count % 10 == 0:
+        if count == 0:
             await sync_patterns()
         await asyncio.sleep(CHECK_INTERVAL)
 
@@ -257,6 +275,7 @@ async def router_status():
 
 
 async def handle_dbsync_matches(request: Request, path: str):
+    """Handle match requests using DBSync as the backend."""
     if not DBSYNC_AVAILABLE or dbsync_get_matches is None:
         raise HTTPException(
             status_code=501,
@@ -337,6 +356,7 @@ async def proxy_request(request: Request, path: str):
     # Determine target backend
     force_backend = request.headers.get("X-Force-Backend")
     if force_backend:
+        logger.debug("Force backend: %s", force_backend)
         force_backend = force_backend.lower()
 
     target_server: Union[KupoServer, DbsyncServer, None] = None
@@ -356,6 +376,7 @@ async def proxy_request(request: Request, path: str):
 
     # Handle DBSync
     if isinstance(target_server, DbsyncServer):
+        logger.debug("Routing request to DBSync: %s", path)
         if path.startswith("matches"):
             return await handle_dbsync_matches(request, path)
         else:
@@ -367,6 +388,7 @@ async def proxy_request(request: Request, path: str):
 
     # Handle Kupo
     try:
+        logger.debug("Routing request to Kupo (%s): %s", target_server.url, path)
         method = request.method
         headers = dict(request.headers)
         body = await request.body()

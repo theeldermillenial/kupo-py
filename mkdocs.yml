@@ -80,8 +80,12 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Installation Guide: installation.md
-  - Examples: examples.md
+  - Getting Started:
+    - Installation: installation.md
+    - Examples: examples.md
+  - User Guide:
+    - Client Mode: client-guide.md
+    - Server Mode: server-guide.md
   - API Reference:
     - Client: api/client.md
     - Models: api/models.md
